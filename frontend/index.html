@@ -1,0 +1,2392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orderflow</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f3f5f9;
+    --surface: #ffffff;
+    --surface-soft: #f8f9fc;
+    --border: #e6e9f0;
+    --text: #111827;
+    --text-dim: #6b7280;
+    --text-faint: #9aa3b2;
+    --primary: #4f63f6;
+    --primary-2: #7c5cfc;
+    --primary-soft: #eef1ff;
+    --gradient: linear-gradient(135deg, #4f63f6, #8b5cf6);
+    --green: #16a34a;
+    --green-bg: #e9fbef;
+    --red: #dc2626;
+    --red-bg: #fdecec;
+    --amber: #d97706;
+    --amber-bg: #fef6e7;
+    --radius: 10px;
+    --radius-sm: 7px;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 2px 6px rgba(16,24,40,0.05);
+    --font-ui: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  /* ---------- Sidebar ---------- */
+
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 22px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 8px;
+    margin-bottom: 28px;
+  }
+
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--gradient);
+    flex-shrink: 0;
+  }
+
+  .brand strong {
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-section-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 0 8px;
+    margin: 14px 0 6px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    transition: background .12s, color .12s;
+  }
+
+  .nav-link:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+  }
+
+  .nav-link.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .nav-link svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 10px 8px 0;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+
+  /* ---------- Main ---------- */
+
+  .main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .topbar h1 {
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar .sub {
+    font-size: 12.5px;
+    color: var(--text-faint);
+  }
+
+  .status-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-soft);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+
+  .dot {
+    width: 6.5px;
+    height: 6.5px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: background .3s, box-shadow .3s;
+  }
+
+  .dot.up {
+    background: var(--green);
+    box-shadow: 0 0 5px var(--green);
+  }
+
+  .dot.down {
+    background: var(--red);
+    box-shadow: 0 0 5px var(--red);
+  }
+
+  .content {
+    padding: 26px 32px 60px;
+    max-width: 1400px;
+  }
+
+  /* ---------- Stat cards ---------- */
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 1000px) {
+    .stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient);
+    margin-bottom: 12px;
+  }
+
+  .stat-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: white;
+  }
+
+  .stat-card.c-blue .stat-icon {
+    background: #4f63f6;
+  }
+
+  .stat-card.c-blue .stat-value {
+    color: #4f63f6;
+  }
+
+  .stat-card.c-purple .stat-icon {
+    background: #8b5cf6;
+  }
+
+  .stat-card.c-purple .stat-value {
+    color: #8b5cf6;
+  }
+
+  .stat-card.c-green .stat-icon {
+    background: #16a34a;
+  }
+
+  .stat-card.c-green .stat-value {
+    color: #16a34a;
+  }
+
+  .stat-card.c-amber .stat-icon {
+    background: #d97706;
+  }
+
+  .stat-card.c-amber .stat-value {
+    color: #d97706;
+  }
+
+  .stat-value {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-family: var(--font-mono);
+  }
+
+  .stat-label {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ---------- Cards ---------- */
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px 22px;
+  }
+
+  .card h2 {
+    font-size: 13.5px;
+    font-weight: 700;
+    margin: 0 0 2px;
+  }
+
+  .card .card-sub {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-bottom: 14px;
+  }
+
+  .card .count-badge {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 6px;
+  }
+
+  .card-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .table-search {
+    position: relative;
+    width: 150px;
+  }
+
+  .table-search svg {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 13px;
+    height: 13px;
+    stroke: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .table-search input {
+    padding: 6px 10px 6px 28px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: var(--surface-soft);
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .chart-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .chart-scroll svg {
+    display: block;
+  }
+
+  .chart-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .chart-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  /* ---------- Topology ---------- */
+
+  .topology-card {
+    position: relative;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 20px 22px 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .topology-glow {
+    position: absolute;
+    top: -140px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 640px;
+    height: 300px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(124,92,252,0.14),
+      rgba(79,99,246,0.06) 55%,
+      transparent 75%
+    );
+    pointer-events: none;
+  }
+
+  .topology-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+    position: relative;
+  }
+
+  .topology-header h2 {
+    font-size: 13.5px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .topology-header .hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .topology-svg-wrap {
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+
+  svg#topology text {
+    font-family: var(--font-mono);
+    fill: var(--text-dim);
+  }
+
+  .node-box {
+    fill: var(--surface);
+    stroke: var(--border);
+    stroke-width: 1.2;
+  }
+
+  .node-box.active {
+    stroke: var(--primary);
+  }
+
+  .node-label {
+    font-size: 12px;
+    font-weight: 700;
+    fill: var(--text);
+  }
+
+  .node-sub {
+    font-size: 10px;
+    fill: var(--text-faint);
+  }
+
+  .edge-line {
+    stroke: #d7dbe6;
+    stroke-width: 1.6;
+    fill: none;
+  }
+
+  .pulse {
+    r: 4.2;
+    fill: var(--primary);
+    opacity: 0;
+    filter: drop-shadow(0 0 4px rgba(79,99,246,0.7));
+  }
+
+  .req-log {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-faint);
+    max-width: 760px;
+    margin: 10px auto 18px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .req-log .line {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeIn .3s ease forwards;
+  }
+
+  .req-log .line .status-ok {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .req-log .line .status-err {
+    color: var(--red);
+    font-weight: 600;
+  }
+
+  .req-log .line .arrow {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  @keyframes fadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* ---------- View switching ---------- */
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  .detail-layout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .detail-table-card {
+    flex: 2.1;
+    min-width: 0;
+  }
+
+  .detail-form-card {
+    flex: 1;
+    min-width: 260px;
+    position: sticky;
+    top: 90px;
+  }
+
+  .detail-form-card form.inline-form {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  @media (max-width: 900px) {
+    .detail-layout {
+      flex-direction: column;
+    }
+
+    .detail-form-card {
+      position: static;
+      width: 100%;
+    }
+  }
+
+  /* ---------- Data panels ---------- */
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  @media (max-width: 1080px) {
+    .panels {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 4px;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: 6px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  td.mono,
+  .mono {
+    font-family: var(--font-mono);
+  }
+
+  td.dim {
+    color: var(--text-dim);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .badge {
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+  }
+
+  .badge.ok {
+    background: var(--green-bg);
+    color: var(--green);
+  }
+
+  .badge.low {
+    background: var(--red-bg);
+    color: var(--red);
+  }
+
+  form.inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .field-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .field-row > * {
+    flex: 1;
+  }
+
+  label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    margin-bottom: 3px;
+    display: block;
+    font-weight: 600;
+  }
+
+  input,
+  select {
+    width: 100%;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+
+  input:focus,
+  select:focus,
+  button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+    border-color: var(--primary);
+  }
+
+  button {
+    margin-top: 4px;
+    background: var(--gradient);
+    color: white;
+    border: none;
+    padding: 9px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: filter .15s, transform .1s;
+  }
+
+  button:hover {
+    filter: brightness(1.06);
+  }
+
+  button:active {
+    transform: translateY(1px);
+  }
+
+  button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .form-msg {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    min-height: 16px;
+  }
+
+  .form-msg.ok {
+    color: var(--green);
+  }
+
+  .form-msg.err {
+    color: var(--red);
+  }
+
+  .empty-state {
+    color: var(--text-faint);
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    padding: 10px 0;
+  }
+
+  footer {
+    text-align: center;
+    padding: 22px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse,
+    .req-log .line {
+      animation: none !important;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .sidebar {
+      display: none;
+    }
+
+    .content {
+      padding: 20px 16px 40px;
+    }
+
+    .topbar {
+      padding: 16px 18px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <strong>Nexora</strong>
+  </div>
+
+  <div class="nav-section-label">Overview</div>
+
+  <a class="nav-link active" href="#" data-view="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="9" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="5" rx="1.5"/>
+      <rect x="14" y="12" width="7" height="9" rx="1.5"/>
+      <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+    </svg>
+    Dashboard
+  </a>
+
+  <div class="nav-section-label">Data</div>
+
+  <a class="nav-link" href="#" data-view="users">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="9" cy="8" r="3.2"/>
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+      <circle cx="17" cy="8" r="2.6"/>
+      <path d="M15.5 14.2c2.4.5 4.5 2.6 4.5 5.8"/>
+    </svg>
+    Users
+  </a>
+
+  <a class="nav-link" href="#" data-view="products">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 8l9-5 9 5-9 5-9-5z"/>
+      <path d="M3 8v8l9 5 9-5V8"/>
+      <path d="M12 13v8"/>
+    </svg>
+    Products
+  </a>
+
+  <a class="nav-link" href="#" data-view="orders">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="9" cy="20" r="1.4"/>
+      <circle cx="17" cy="20" r="1.4"/>
+      <path d="M2 3h3l2.6 12.5a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"/>
+    </svg>
+    Orders
+  </a>
+
+  <div class="sidebar-footer">v1 · local dev</div>
+</aside>
+
+<div class="main">
+
+  <div class="topbar">
+    <div>
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="sub" id="pageSub">
+        Live view across user, product & order services
+      </div>
+    </div>
+
+    <div class="status-row" id="statusRow">
+      <span class="status-pill">
+        <span class="dot" id="dot-users"></span>
+        user-service
+      </span>
+
+      <span class="status-pill">
+        <span class="dot" id="dot-products"></span>
+        product-service
+      </span>
+
+      <span class="status-pill">
+        <span class="dot" id="dot-orders"></span>
+        order-service
+      </span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ===================== DASHBOARD VIEW ===================== -->
+
+    <div class="view active" data-view="dashboard">
+
+      <div class="stat-grid">
+
+        <div class="stat-card c-blue">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <circle cx="9" cy="8" r="3.2"/>
+              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+              <circle cx="17" cy="8" r="2.6"/>
+              <path d="M15.5 14.2c2.4.5 4.5 2.6 4.5 5.8"/>
+            </svg>
+          </div>
+
+          <div class="stat-value" id="statUsers">—</div>
+          <div class="stat-label">Total users</div>
+        </div>
+
+        <div class="stat-card c-purple">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M3 8l9-5 9 5-9 5-9-5z"/>
+              <path d="M3 8v8l9 5 9-5V8"/>
+              <path d="M12 13v8"/>
+            </svg>
+          </div>
+
+          <div class="stat-value" id="statProducts">—</div>
+          <div class="stat-label">Products listed</div>
+        </div>
+
+        <div class="stat-card c-green">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <circle cx="9" cy="20" r="1.4"/>
+              <circle cx="17" cy="20" r="1.4"/>
+              <path d="M2 3h3l2.6 12.5a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"/>
+            </svg>
+          </div>
+
+          <div class="stat-value" id="statOrders">—</div>
+          <div class="stat-label">Orders placed</div>
+        </div>
+
+        <div class="stat-card c-amber">
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M12 2v20M17 5.5c0-1.9-2.2-3-5-3s-5 1.4-5 3.2 2.2 2.8 5 3.2 5 1.3 5 3.2-2.2 3.1-5 3.1-5-1.1-5-3"/>
+            </svg>
+          </div>
+
+          <div class="stat-value" id="statRevenue">—</div>
+          <div class="stat-label">Revenue (₹)</div>
+        </div>
+
+      </div>
+
+      <!-- Charts -->
+
+      <div class="charts-grid">
+
+        <div class="card">
+          <h2>Stock by product</h2>
+          <div class="card-sub">
+            Live inventory levels from product-service
+          </div>
+
+          <div class="chart-scroll">
+            <svg id="stockChart" viewBox="0 0 460 190" height="190"></svg>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Revenue by product</h2>
+          <div class="card-sub">
+            Aggregated from placed orders
+          </div>
+
+          <svg id="revenueChart" viewBox="0 0 420 190" width="100%"></svg>
+        </div>
+
+      </div>
+
+      <!-- Topology -->
+
+      <div class="topology-card">
+
+        <div class="topology-glow"></div>
+
+        <div class="topology-header">
+          <h2>Request topology</h2>
+          <span class="hint" id="topoHint">idle</span>
+        </div>
+
+        <div class="topology-svg-wrap">
+
+          <svg id="topology"
+               viewBox="0 0 720 190"
+               width="100%"
+               style="max-width:720px">
+
+            <path id="edge-order-user"
+                  class="edge-line"
+                  d="M 360 60 C 300 90, 220 90, 190 118"></path>
+
+            <path id="edge-order-product"
+                  class="edge-line"
+                  d="M 360 60 C 420 90, 500 90, 530 118"></path>
+
+            <rect id="box-order"
+                  class="node-box"
+                  x="290"
+                  y="26"
+                  width="140"
+                  height="46"
+                  rx="8"></rect>
+
+            <text x="360"
+                  y="48"
+                  text-anchor="middle"
+                  class="node-label">
+              order-service
+            </text>
+
+            <text x="360"
+                  y="62"
+                  text-anchor="middle"
+                  class="node-sub">
+              :3003 · orders_db
+            </text>
+
+            <rect id="box-user"
+                  class="node-box"
+                  x="60"
+                  y="118"
+                  width="140"
+                  height="46"
+                  rx="8"></rect>
+
+            <text x="130"
+                  y="140"
+                  text-anchor="middle"
+                  class="node-label">
+              user-service
+            </text>
+
+            <text x="130"
+                  y="154"
+                  text-anchor="middle"
+                  class="node-sub">
+              :3001 · users_db
+            </text>
+
+            <rect id="box-product"
+                  class="node-box"
+                  x="470"
+                  y="118"
+                  width="140"
+                  height="46"
+                  rx="8"></rect>
+
+            <text x="540"
+                  y="140"
+                  text-anchor="middle"
+                  class="node-label">
+              product-service
+            </text>
+
+            <text x="540"
+                  y="154"
+                  text-anchor="middle"
+                  class="node-sub">
+              :3002 · products_db
+            </text>
+
+            <circle id="pulse-user"
+                    class="pulse"
+                    cx="360"
+                    cy="60"></circle>
+
+            <circle id="pulse-product"
+                    class="pulse"
+                    cx="360"
+                    cy="60"></circle>
+
+          </svg>
+
+        </div>
+
+        <div class="req-log" id="reqLog"></div>
+
+      </div>
+
+    </div>
+
+    <!-- ===================== USERS VIEW ===================== -->
+
+    <div class="view" data-view="users">
+
+      <div class="detail-layout">
+
+        <section class="card detail-table-card">
+
+          <div class="card-head-row">
+
+            <div>
+              <h2>
+                Users
+                <span class="count-badge" id="userCount">—</span>
+              </h2>
+
+              <div class="card-sub">
+                Managed by user-service
+              </div>
+            </div>
+
+            <div class="table-search">
+
+              <svg viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="2">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="M21 21l-4.3-4.3"/>
+              </svg>
+
+              <input id="userSearch" placeholder="Search...">
+
+            </div>
+
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+
+            <tbody id="usersTable"></tbody>
+          </table>
+
+        </section>
+
+        <section class="card detail-form-card">
+
+          <h2>Add user</h2>
+
+          <div class="card-sub">
+            Creates a row in users_db
+          </div>
+
+          <form class="inline-form" id="userForm">
+
+            <div>
+              <label for="userName">Name</label>
+              <input id="userName"
+                     required
+                     placeholder="e.g. Meera Iyer">
+            </div>
+
+            <div>
+              <label for="userEmail">Email</label>
+              <input id="userEmail"
+                     type="email"
+                     required
+                     placeholder="meera@example.com">
+            </div>
+
+            <button type="submit">
+              Add user
+            </button>
+
+            <div class="form-msg" id="userMsg"></div>
+
+          </form>
+
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- ===================== PRODUCTS VIEW ===================== -->
+
+    <div class="view" data-view="products">
+
+      <div class="detail-layout">
+
+        <section class="card detail-table-card">
+
+          <div class="card-head-row">
+
+            <div>
+              <h2>
+                Products
+                <span class="count-badge" id="productCount">—</span>
+              </h2>
+
+              <div class="card-sub">
+                Managed by product-service
+              </div>
+            </div>
+
+            <div class="table-search">
+
+              <svg viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="2">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="M21 21l-4.3-4.3"/>
+              </svg>
+
+              <input id="productSearch"
+                     placeholder="Search...">
+
+            </div>
+
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Stock</th>
+              </tr>
+            </thead>
+
+            <tbody id="productsTable"></tbody>
+          </table>
+
+        </section>
+
+        <section class="card detail-form-card">
+
+          <h2>Add product</h2>
+
+          <div class="card-sub">
+            Creates a row in products_db
+          </div>
+
+          <form class="inline-form" id="productForm">
+
+            <div>
+              <label for="productName">Name</label>
+              <input id="productName"
+                     required
+                     placeholder="e.g. Laptop Stand">
+            </div>
+
+            <div>
+              <label for="productPrice">Price (₹)</label>
+              <input id="productPrice"
+                     type="number"
+                     min="0"
+                     step="0.01"
+                     required>
+            </div>
+
+            <div>
+              <label for="productStock">Stock</label>
+              <input id="productStock"
+                     type="number"
+                     min="0"
+                     step="1"
+                     value="10">
+            </div>
+
+            <button type="submit">
+              Add product
+            </button>
+
+            <div class="form-msg" id="productMsg"></div>
+
+          </form>
+
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- ===================== ORDERS VIEW ===================== -->
+
+    <div class="view" data-view="orders">
+
+      <div class="detail-layout">
+
+        <section class="card detail-table-card">
+
+          <div class="card-head-row">
+
+            <div>
+              <h2>
+                Orders
+                <span class="count-badge" id="orderCount">—</span>
+              </h2>
+
+              <div class="card-sub">
+                Cross-service checkout flow
+              </div>
+            </div>
+
+            <div class="table-search">
+
+              <svg viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="2">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="M21 21l-4.3-4.3"/>
+              </svg>
+
+              <input id="orderSearch"
+                     placeholder="Search...">
+
+            </div>
+
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+
+            <tbody id="ordersTable"></tbody>
+          </table>
+
+        </section>
+
+        <section class="card detail-form-card">
+
+          <h2>Place order</h2>
+
+          <div class="card-sub">
+            Validates user + reserves stock, then persists
+          </div>
+
+          <form class="inline-form" id="orderForm">
+
+            <div>
+              <label for="orderUser">User</label>
+              <select id="orderUser" required></select>
+            </div>
+
+            <div>
+              <label for="orderProduct">Product</label>
+              <select id="orderProduct" required></select>
+            </div>
+
+            <div>
+              <label for="orderQty">Qty</label>
+              <input id="orderQty"
+                     type="number"
+                     min="1"
+                     step="1"
+                     value="1"
+                     required>
+            </div>
+
+            <button type="submit"
+                    id="orderSubmitBtn">
+              Place order
+            </button>
+
+            <div class="form-msg" id="orderMsg"></div>
+
+          </form>
+
+        </section>
+
+      </div>
+
+    </div>
+
+    <footer>
+      order-service validates the user, reserves stock on product-service,
+      then persists the order — watch the topology on the Dashboard when you submit
+    </footer>
+
+  </div>
+</div>
+
+<script>
+
+const $ = (id) => document.getElementById(id);
+
+const CHART_COLORS = [
+  '#4f63f6',
+  '#7c5cfc',
+  '#a78bfa',
+  '#c4b5fd',
+  '#818cf8',
+  '#6d28d9'
+];
+
+/* ---------- View switching ---------- */
+
+const VIEW_META = {
+  dashboard: {
+    title: 'Dashboard',
+    sub: 'Live view across user, product & order services'
+  },
+
+  users: {
+    title: 'Users',
+    sub: 'Browse and add users — managed by user-service'
+  },
+
+  products: {
+    title: 'Products',
+    sub: 'Browse and add products — managed by product-service'
+  },
+
+  orders: {
+    title: 'Orders',
+    sub: 'Place orders through the cross-service checkout flow'
+  }
+};
+
+function showView(name) {
+
+  document.querySelectorAll('.view').forEach(v =>
+    v.classList.toggle('active', v.dataset.view === name)
+  );
+
+  document.querySelectorAll('.nav-link').forEach(l =>
+    l.classList.toggle('active', l.dataset.view === name)
+  );
+
+  const meta = VIEW_META[name] || VIEW_META.dashboard;
+
+  $('pageTitle').textContent = meta.title;
+  $('pageSub').textContent = meta.sub;
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'instant' in window ? 'instant' : 'auto'
+  });
+}
+
+document.querySelectorAll('.nav-link[data-view]').forEach(link => {
+
+  link.addEventListener('click', (e) => {
+
+    e.preventDefault();
+
+    showView(link.dataset.view);
+
+  });
+
+});
+
+/* ---------- Health polling ---------- */
+
+async function pollHealth() {
+
+  const services = [
+    {
+      key: 'users',
+      url: '/api/health/users'
+    },
+
+    {
+      key: 'products',
+      url: '/api/health/products'
+    },
+
+    {
+      key: 'orders',
+      url: '/api/health/orders'
+    }
+  ];
+
+  for (const svc of services) {
+
+    const dot = $(`dot-${svc.key}`);
+
+    try {
+
+      const res = await fetch(svc.url, {
+        cache: 'no-store'
+      });
+
+      dot.className = 'dot ' + (
+        res.ok ? 'up' : 'down'
+      );
+
+    } catch {
+
+      dot.className = 'dot down';
+
+    }
+  }
+}
+
+pollHealth();
+
+setInterval(pollHealth, 6000);
+
+/* ---------- Request log ---------- */
+
+function logRequest(fromTo, method, path, status, ms) {
+
+  const log = $('reqLog');
+
+  const ok = status >= 200 && status < 300;
+
+  const line = document.createElement('div');
+
+  line.className = 'line';
+
+  line.innerHTML = `
+    <span class="dim mono">
+      ${new Date().toLocaleTimeString()}
+    </span>
+
+    <span class="arrow">
+      ${fromTo}
+    </span>
+
+    <span class="mono">
+      ${method} ${path}
+    </span>
+
+    <span class="mono ${ok ? 'status-ok' : 'status-err'}">
+      ${status}
+    </span>
+
+    <span class="dim mono">
+      ${ms}ms
+    </span>
+  `;
+
+  log.prepend(line);
+
+  while (log.children.length > 6) {
+
+    log.removeChild(log.lastChild);
+
+  }
+}
+
+async function timedFetch(fromTo, method, url, body) {
+
+  const start = performance.now();
+
+  const res = await fetch(url, {
+
+    method,
+
+    headers: body
+      ? { 'Content-Type': 'application/json' }
+      : undefined,
+
+    body: body
+      ? JSON.stringify(body)
+      : undefined
+
+  });
+
+  const ms = Math.round(
+    performance.now() - start
+  );
+
+  const path = url.replace(/^\/api/, '');
+
+  logRequest(
+    fromTo,
+    method,
+    path,
+    res.status,
+    ms
+  );
+
+  return res;
+}
+
+/* ---------- Topology animation ---------- */
+
+function pulseEdge(target) {
+
+  const pulse = $(`pulse-${target}`);
+
+  const box = $(
+    `box-${target === 'user'
+      ? 'user'
+      : 'product'}`
+  );
+
+  const path = $(`edge-order-${target}`);
+
+  const len = path.getTotalLength();
+
+  pulse.style.opacity = '1';
+
+  box.classList.add('active');
+
+  let start = null;
+
+  const duration = 550;
+
+  function step(ts) {
+
+    if (!start) {
+      start = ts;
+    }
+
+    const t = Math.min(
+      (ts - start) / duration,
+      1
+    );
+
+    const point = path.getPointAtLength(
+      t * len
+    );
+
+    pulse.setAttribute(
+      'cx',
+      point.x
+    );
+
+    pulse.setAttribute(
+      'cy',
+      point.y
+    );
+
+    if (t < 1) {
+
+      requestAnimationFrame(step);
+
+    } else {
+
+      pulse.style.opacity = '0';
+
+      box.classList.remove('active');
+
+    }
+  }
+
+  requestAnimationFrame(step);
+}
+
+/* ---------- Stock chart ---------- */
+
+function renderStockChart(products) {
+
+  const svg = $('stockChart');
+
+  const H = 190;
+
+  const padB = 30;
+  const padT = 26;
+  const padL = 34;
+  const padR = 16;
+
+  const slot = 58;
+
+  const chartW =
+    Math.max(products.length, 1) * slot;
+
+  const W =
+    padL + chartW + padR;
+
+  const chartH =
+    H - padB - padT;
+
+  const rawMax = Math.max(
+    10,
+    ...products.map(
+      p => Number(p.stock)
+    )
+  );
+
+  const maxStock =
+    Math.ceil(
+      (rawMax * 1.18) / 5
+    ) * 5;
+
+  const barW =
+    Math.min(
+      38,
+      slot - 18
+    );
+
+  svg.setAttribute(
+    'viewBox',
+    `0 0 ${W} ${H}`
+  );
+
+  svg.setAttribute(
+    'width',
+    W
+  );
+
+  svg.removeAttribute(
+    'preserveAspectRatio'
+  );
+
+  let gridlines = '';
+
+  const steps = 4;
+
+  for (
+    let i = 0;
+    i <= steps;
+    i++
+  ) {
+
+    const y =
+      padT +
+      chartH -
+      (i / steps) * chartH;
+
+    gridlines += `
+      <line
+        x1="${padL}"
+        y1="${y}"
+        x2="${W - padR}"
+        y2="${y}"
+        stroke="#eef0f5"
+        stroke-width="1"
+      />
+
+      <text
+        x="${padL - 8}"
+        y="${y + 3}"
+        text-anchor="end"
+        font-size="9.5"
+        fill="#9aa3b2"
+        font-family="IBM Plex Mono, monospace"
+      >
+        ${Math.round(
+          maxStock * i / steps
+        )}
+      </text>
+    `;
+
+  }
+
+  let bars = '';
+
+  products.forEach((p, i) => {
+
+    const x =
+      padL +
+      i * slot +
+      (slot - barW) / 2;
+
+    const h =
+      (Number(p.stock) / maxStock) *
+      chartH;
+
+    const y =
+      padT +
+      chartH -
+      h;
+
+    const low =
+      Number(p.stock) <= 5;
+
+    const color =
+      low
+        ? '#dc2626'
+        : CHART_COLORS[
+            i % CHART_COLORS.length
+          ];
+
+    bars += `
+
+      <rect
+        x="${x}"
+        y="${y}"
+        width="${barW}"
+        height="${h}"
+        rx="4"
+        fill="${color}"
+      ></rect>
+
+      <text
+        x="${x + barW / 2}"
+        y="${padT + chartH + 15}"
+        text-anchor="middle"
+        font-size="9.5"
+        fill="#6b7280"
+        font-family="Inter"
+      >
+        ${escapeHtml(
+          truncate(p.name, 9)
+        )}
+      </text>
+
+      <text
+        x="${x + barW / 2}"
+        y="${Math.max(
+          y - 5,
+          padT - 2
+        )}"
+        text-anchor="middle"
+        font-size="10"
+        fill="#111827"
+        font-weight="600"
+        font-family="IBM Plex Mono, monospace"
+      >
+        ${p.stock}
+      </text>
+
+    `;
+
+  });
+
+  svg.innerHTML =
+    gridlines + bars ||
+    `
+      <text
+        x="${W / 2}"
+        y="${H / 2}"
+        text-anchor="middle"
+        fill="#9aa3b2"
+        font-size="12"
+      >
+        no products yet
+      </text>
+    `;
+}
+
+/* ============================================================
+   UPDATED REVENUE BY PRODUCT CHART
+   ONLY THIS CHART'S LETTER SIZES WERE INCREASED
+============================================================ */
+
+function renderRevenueChart(orders) {
+
+  const svg = $('revenueChart');
+
+  const W = 420;
+  const H = 190;
+
+  const padL = 112;
+  const padR = 92;
+  const padT = 10;
+  const padB = 26;
+
+  const chartW =
+    W - padL - padR;
+
+  const chartH =
+    H - padB - padT;
+
+  const byProduct = {};
+
+  orders.forEach(o => {
+
+    const name =
+      o.product_name ||
+      o.productName ||
+      'unknown';
+
+    const total = Number(
+      o.total_price ??
+      o.totalPrice ??
+      0
+    );
+
+    byProduct[name] =
+      (byProduct[name] || 0) +
+      total;
+
+  });
+
+  const entries =
+    Object.entries(byProduct)
+      .sort(
+        (a, b) => b[1] - a[1]
+      )
+      .slice(0, 5);
+
+  const max = Math.max(
+    1,
+    ...entries.map(
+      e => e[1]
+    )
+  );
+
+  if (entries.length === 0) {
+
+    svg.innerHTML = `
+      <text
+        x="${W / 2}"
+        y="${H / 2}"
+        text-anchor="middle"
+        fill="#9aa3b2"
+        font-size="16"
+        font-family="Inter"
+      >
+        no orders yet
+      </text>
+    `;
+
+    return;
+  }
+
+  const rowH =
+    chartH / entries.length;
+
+  let bars = '';
+
+  entries.forEach(
+    ([name, total], i) => {
+
+      const w = Math.max(
+        4,
+        (total / max) * chartW
+      );
+      const y =
+        padT +
+        i * rowH +
+        rowH * 0.22;
+      const barH =
+        rowH * 0.56;
+      const color =
+        CHART_COLORS[
+          i % CHART_COLORS.length
+        ];
+      bars += `
+        <!-- Product name - INCREASED -->
+        <text
+          x="${padL - 10}"
+          y="${y + barH / 2 + 5}"
+          text-anchor="end"
+          font-size="13"
+          fill="#374151"
+          font-family="Inter"
+          font-weight="500"
+        >
+          ${escapeHtml(
+            truncate(name, 13)
+          )}
+        </text>
+        <!-- Revenue bar -->
+        <rect
+          x="${padL}"
+          y="${y}"
+          width="${w}"
+          height="${barH}"
+          rx="4"
+          fill="${color}"
+        ></rect>
+        <!-- Revenue amount - INCREASED -->
+        <text
+          x="${padL + w + 8}"
+          y="${y + barH / 2 + 5}"
+          font-size="12"
+          fill="#111827"
+          font-weight="700"
+          font-family="IBM Plex Mono, monospace"
+        >
+          ₹${Math.round(total).toLocaleString('en-IN')}
+        </text>
+      `;
+    }
+  );
+  svg.setAttribute(
+    'viewBox',
+    `0 0 ${W} ${H}`
+  );
+  svg.innerHTML = bars;
+}
+function truncate(str, n) {
+  return str.length > n
+    ? str.slice(0, n - 1) + '…'
+    : str;
+}
+let allUsers = [];
+let allProducts = [];
+let allOrders = [];
+function renderUsersTable(users) {
+  $('usersTable').innerHTML =
+    users.map(u =>
+      `
+      <tr>
+        <td class="mono dim">
+          #${u.id}
+        </td>
+        <td>
+          ${escapeHtml(u.name)}
+        </td>
+        <td class="mono dim">
+          ${escapeHtml(u.email)}
+        </td>
+      </tr>
+      `
+    ).join('')
+    ||
+    `
+    <tr>
+      <td colspan="3"
+          class="empty-state">
+        no matching users
+      </td>
+    </tr>
+    `;
+}
+function renderProductsTable(products) {
+  $('productsTable').innerHTML =
+    products.map(p => {
+      const low =
+        Number(p.stock) <= 5;
+      return `
+        <tr>
+          <td class="mono dim">
+            #${p.id}
+          </td>
+          <td>
+            ${escapeHtml(p.name)}
+          </td>
+          <td class="mono">
+            ₹${Number(p.price).toFixed(2)}
+          </td>
+          <td>
+            <span class="badge ${low ? 'low' : 'ok'}">
+              ${p.stock}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('')
+    ||
+    `
+    <tr>
+      <td colspan="4"
+          class="empty-state">
+        no matching products
+      </td>
+    </tr>
+    `;
+}
+function renderOrdersTable(orders) {
+  $('ordersTable').innerHTML =
+    orders.map(o =>
+      `
+      <tr>
+        <td class="mono dim">
+          #${o.id}
+        </td>
+        <td>
+          ${escapeHtml(
+            o.user_name ||
+            o.userName
+          )}
+        </td>
+        <td>
+          ${escapeHtml(
+            o.product_name ||
+            o.productName
+          )}
+        </td>
+        <td class="mono">
+          ${o.quantity}
+        </td>
+        <td class="mono">
+          ₹${Number(
+            o.total_price ??
+            o.totalPrice
+          ).toFixed(2)}
+        </td>
+      </tr>
+      `
+    ).join('')
+    ||
+    `
+    <tr>
+      <td colspan="5"
+          class="empty-state">
+        no matching orders
+      </td>
+    </tr>
+    `;
+}
+async function loadUsers() {
+  const res =
+    await fetch('/api/users');
+  allUsers =
+    await res.json();
+  $('userCount').textContent =
+    allUsers.length;
+  $('statUsers').textContent =
+    allUsers.length;
+  renderUsersTable(
+    allUsers
+  );
+  const select =
+    $('orderUser');
+  select.innerHTML =
+    allUsers.map(u =>
+      `
+      <option value="${u.id}">
+        ${escapeHtml(u.name)}
+      </option>
+      `
+    ).join('');
+  return allUsers;
+}
+async function loadProducts() {
+  const res =
+    await fetch('/api/products');
+  allProducts =
+    await res.json();
+  $('productCount').textContent =
+    allProducts.length;
+  $('statProducts').textContent =
+    allProducts.length;
+  renderProductsTable(
+    allProducts
+  );
+  const select =
+    $('orderProduct');
+  select.innerHTML =
+    allProducts.map(p =>
+      `
+      <option value="${p.id}">
+        ${escapeHtml(p.name)}
+        — ₹${Number(p.price).toFixed(2)}
+        (${p.stock} left)
+      </option>
+      `
+    ).join('');
+  renderStockChart(
+    allProducts
+  );
+  return allProducts;
+}
+async function loadOrders() {
+  const res =
+    await fetch('/api/orders');
+  allOrders =
+    await res.json();
+  $('orderCount').textContent =
+    allOrders.length;
+  $('statOrders').textContent =
+    allOrders.length;
+  const revenue =
+    allOrders.reduce(
+      (sum, o) =>
+        sum +
+        Number(
+          o.total_price ??
+          o.totalPrice ??
+          0
+        ),
+
+      0
+    );
+  $('statRevenue').textContent =
+    revenue.toLocaleString(
+      'en-IN',
+      {
+        maximumFractionDigits: 0
+      }
+    );
+  renderOrdersTable(
+    allOrders
+  );
+  renderRevenueChart(
+    allOrders
+  );
+}
+$('userSearch').addEventListener(
+  'input',
+  (e) => {
+    const q =
+      e.target.value
+        .trim()
+        .toLowerCase();
+    renderUsersTable(
+      allUsers.filter(u =>
+        u.name
+          .toLowerCase()
+          .includes(q) ||
+
+        u.email
+          .toLowerCase()
+          .includes(q)
+      )
+    );
+  }
+);
+$('productSearch').addEventListener(
+  'input',
+  (e) => {
+    const q =
+      e.target.value
+        .trim()
+        .toLowerCase();
+    renderProductsTable(
+      allProducts.filter(p =>
+        p.name
+          .toLowerCase()
+          .includes(q)
+      )
+    );
+  }
+);
+$('orderSearch').addEventListener(
+  'input',
+  (e) => {
+    const q =
+      e.target.value
+        .trim()
+        .toLowerCase();
+    renderOrdersTable(
+      allOrders.filter(o =>
+        (
+          o.user_name ||
+          o.userName ||
+          ''
+        )
+          .toLowerCase()
+          .includes(q)
+        ||
+        (
+          o.product_name ||
+          o.productName ||
+          ''
+        )
+          .toLowerCase()
+          .includes(q)
+      )
+    );
+  }
+);
+function escapeHtml(str) {
+  return String(str).replace(
+    /[&<>"']/g,
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c])
+  );
+}
+async function refreshAll() {
+  await Promise.all([
+    loadUsers(),
+    loadProducts(),
+    loadOrders()
+  ]);
+}
+refreshAll();
+$('userForm').addEventListener(
+  'submit',
+  async (e) => {
+    e.preventDefault();
+    const msg =
+      $('userMsg');
+    msg.textContent = '';
+    msg.className =
+      'form-msg';
+    try {
+      const res =
+        await timedFetch(
+          'client → user-service',
+          'POST',
+          '/api/users',
+          {
+            name:
+              $('userName').value,
+
+            email:
+              $('userEmail').value
+          }
+        );
+      if (!res.ok) {
+        const e2 =
+          await res.json();
+        throw new Error(
+          e2.error ||
+          'failed'
+        );
+      }
+      msg.textContent =
+        'user created';
+      msg.className =
+        'form-msg ok';
+      e.target.reset();
+      await loadUsers();
+    } catch (err) {
+      msg.textContent =
+        err.message;
+      msg.className =
+        'form-msg err';
+    }
+  }
+);
+$('productForm').addEventListener(
+  'submit',
+  async (e) => {
+    e.preventDefault();
+    const msg =
+      $('productMsg');
+    msg.textContent = '';
+    msg.className =
+      'form-msg';
+    try {
+      const res =
+        await timedFetch(
+          'client → product-service',
+          'POST',
+          '/api/products',
+          {
+            name:
+              $('productName').value,
+            price:
+              parseFloat(
+                $('productPrice').value
+              ),
+            stock:
+              parseInt(
+                $('productStock').value ||
+                '0',
+                10
+              )
+          }
+        );
+      if (!res.ok) {
+        const e2 =
+          await res.json();
+        throw new Error(
+          e2.error ||
+          'failed'
+        );
+      }
+      msg.textContent =
+        'product created';
+      msg.className =
+        'form-msg ok';
+      e.target.reset();
+      await loadProducts();
+    } catch (err) {
+      msg.textContent =
+        err.message;
+      msg.className =
+        'form-msg err';
+
+    }
+
+  }
+);
+$('orderForm').addEventListener(
+  'submit',
+  async (e) => {
+    e.preventDefault();
+    const msg =
+      $('orderMsg');
+    const btn =
+      $('orderSubmitBtn');
+    msg.textContent = '';
+    msg.className =
+      'form-msg';
+    btn.disabled = true;
+    $('topoHint').textContent =
+      'in flight…';
+    pulseEdge('user');
+    pulseEdge('product');
+    try {
+      const res =
+        await timedFetch(
+          'order-service → (user + product)',
+          'POST',
+          '/api/orders',
+          {
+            userId:
+              parseInt(
+                $('orderUser').value,
+                10
+              ),
+            productId:
+              parseInt(
+                $('orderProduct').value,
+                10
+              ),
+            quantity:
+              parseInt(
+                $('orderQty').value,
+                10
+              )
+          }
+        );
+      const data =
+        await res.json();
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+          'order failed'
+        );
+      }
+      msg.textContent =
+        `order #${data.id} created — ₹${Number(
+          data.total_price
+        ).toFixed(2)}`;
+      msg.className =
+        'form-msg ok';
+      await Promise.all([
+        loadOrders(),
+        loadProducts()
+      ]);
+    } catch (err) {
+      msg.textContent =
+        err.message;
+      msg.className =
+        'form-msg err';
+    } finally {
+      btn.disabled = false;
+      $('topoHint').textContent =
+        'idle';
+
+    }
+
+  }
+);
+</script>
+</body>
+</html>

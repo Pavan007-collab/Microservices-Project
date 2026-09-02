@@ -5,54 +5,77 @@ metadata:
   namespace: microservices-demo
   labels:
     app: product-service
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: product-service
+
   template:
     metadata:
       labels:
         app: product-service
+
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: product-service
+
       serviceAccountName: microservices-sa
+
       containers:
         - name: product-service
-          image: REGION-docker.pkg.dev/PROJECT_ID/microservices-repo/product-service:latest
+          image: asia-south1-docker.pkg.dev/sandbox-g-k-engine/ismartcheck-nonprod-demo-registry/product-service:latest
+
           ports:
             - containerPort: 3002
+
           env:
             - name: PORT
               value: "3002"
+
             - name: DB_HOST
               value: "127.0.0.1"
+
             - name: DB_PORT
               value: "5432"
+
             - name: DB_NAME
               value: "products_db"
+
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
                   name: db-credentials
                   key: DB_USER
+
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: db-credentials
                   key: DB_PASSWORD
+
           resources:
             requests:
-              cpu: "100m"
+              cpu: "25m"
               memory: "128Mi"
             limits:
               cpu: "250m"
               memory: "256Mi"
+
           readinessProbe:
             httpGet:
               path: /health
               port: 3002
             initialDelaySeconds: 5
             periodSeconds: 10
+
           livenessProbe:
             httpGet:
               path: /health
@@ -62,22 +85,26 @@ spec:
 
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.0
+
           args:
             - "--structured-logs"
             - "--port=5432"
             - "$(INSTANCE_CONNECTION_NAME)"
+
           env:
             - name: INSTANCE_CONNECTION_NAME
               valueFrom:
                 secretKeyRef:
                   name: db-credentials
                   key: INSTANCE_CONNECTION_NAME
+
           resources:
             requests:
-              cpu: "50m"
+              cpu: "25m"
               memory: "64Mi"
             limits:
               cpu: "100m"
               memory: "128Mi"
+
           securityContext:
             runAsNonRoot: true

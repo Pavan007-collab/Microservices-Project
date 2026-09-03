@@ -4,3 +4,11 @@ npm-debug.log
 k8s/db-secret.yaml
 *.log
 .DS_Store
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*backup*
+terraform/node_pool.tf.manual
+terraform/provider-schema.json

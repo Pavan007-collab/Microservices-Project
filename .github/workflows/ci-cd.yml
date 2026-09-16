@@ -1,0 +1,124 @@
+name: CI/CD - Build and Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: asia-south1
+  CLUSTER_NAME: ismartcheck-nonprod-demo-gke
+  NAMESPACE: microservices-demo
+  REGISTRY: asia-south1-docker.pkg.dev
+  REPOSITORY: ismartcheck-nonprod-demo-registry
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build and push images
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          for svc in user-service product-service order-service; do
+            echo "Building $svc..."
+            docker build \
+              -t "${REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${svc}:${IMAGE_TAG}" \
+              "services/${svc}"
+
+            echo "Pushing $svc..."
+            docker push \
+              "${REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${svc}:${IMAGE_TAG}"
+          done
+
+          echo "Building frontend..."
+          docker build \
+            -t "${REGISTRY}/${PROJECT_ID}/${REPOSITORY}/frontend:${IMAGE_TAG}" \
+            frontend
+
+          echo "Pushing frontend..."
+          docker push \
+            "${REGISTRY}/${PROJECT_ID}/${REPOSITORY}/frontend:${IMAGE_TAG}"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Verify cluster access
+        run: |
+          kubectl get nodes
+          kubectl get namespace "${NAMESPACE}"
+
+      - name: Deploy Kubernetes manifests
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          TMP_DIR="$(mktemp -d)"
+          cp -r k8s/* "$TMP_DIR"/
+
+          find "$TMP_DIR" -name "*.yaml" -exec sed -i \
+            -e "s|:latest|:${IMAGE_TAG}|g" \
+            {} +
+
+          kubectl apply -f "$TMP_DIR/namespace.yaml"
+
+          kubectl apply -f "$TMP_DIR/user-service/"
+          kubectl apply -f "$TMP_DIR/product-service/"
+          kubectl apply -f "$TMP_DIR/order-service/"
+          kubectl apply -f "$TMP_DIR/frontend/"
+
+          kubectl apply -f "$TMP_DIR/gateway.yaml"
+          kubectl apply -f "$TMP_DIR/httproute.yaml"
+
+          rm -rf "$TMP_DIR"
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/user-service \
+            -n "${NAMESPACE}" --timeout=180s
+
+          kubectl rollout status deployment/product-service \
+            -n "${NAMESPACE}" --timeout=180s
+
+          kubectl rollout status deployment/order-service \
+            -n "${NAMESPACE}" --timeout=180s
+
+          kubectl rollout status deployment/frontend \
+            -n "${NAMESPACE}" --timeout=180s
+
+      - name: Verify application
+        run: |
+          kubectl get pods -n "${NAMESPACE}"
+          kubectl get services -n "${NAMESPACE}"
+          kubectl get gateway -n "${NAMESPACE}"
+          kubectl get httproute -n "${NAMESPACE}"

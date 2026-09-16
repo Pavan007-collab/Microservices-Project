@@ -7,6 +7,11 @@ terraform {
       version = "~> 7.46"
     }
   }
+
+  backend "gcs" {
+    bucket = "tfstate-sandbox-g-k-engine-802553692011"
+    prefix = "ismartcheck/nonprod"
+  }
 }
 
 provider "google" {

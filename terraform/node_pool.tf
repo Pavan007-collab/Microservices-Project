@@ -13,7 +13,6 @@ resource "google_container_node_pool" "nodes" {
   node_count                = 1
   node_locations            = ["asia-south1-a", "asia-south1-b", "asia-south1-c"]
   project                   = "sandbox-g-k-engine"
-  version                   = "1.35.7-gke.1027000"
   autoscaling {
     location_policy      = "BALANCED"
     max_node_count       = 0
@@ -93,10 +92,6 @@ resource "google_container_node_pool" "nodes" {
       shutdown_grace_period_critical_pods_seconds = 0
       shutdown_grace_period_seconds               = 0
       single_process_oom_kill                     = false
-    }
-    node_image_config {
-      image         = "gke-1357-gke1027000-cos-125-19216-532-25-c-pre"
-      image_project = "gke-node-images"
     }
     shielded_instance_config {
       enable_integrity_monitoring = true

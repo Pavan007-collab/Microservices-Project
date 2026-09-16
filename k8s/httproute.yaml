@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nexora-frontend
+  namespace: microservices-demo
+spec:
+  parentRefs:
+    - name: nexora-global
+  hostnames:
+    - nexora-cloud.mooo.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend
+          port: 80

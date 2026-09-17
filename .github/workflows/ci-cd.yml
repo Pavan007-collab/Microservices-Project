@@ -97,6 +97,8 @@ jobs:
           kubectl apply -f "$TMP_DIR/order-service/"
           kubectl apply -f "$TMP_DIR/frontend/"
 
+          kubectl apply -f "$TMP_DIR/monitoring/podmonitoring.yaml"
+
           kubectl apply -f "$TMP_DIR/gateway.yaml"
           kubectl apply -f "$TMP_DIR/httproute.yaml"
 

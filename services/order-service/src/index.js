@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const client = require('prom-client');
 const { pool, initSchema } = require('./db');
 
 const app = express();
@@ -9,6 +10,40 @@ app.use(cors());
 
 const PORT = process.env.PORT || 3003;
 const SERVICE_NAME = 'order-service';
+const METRIC_SERVICE_NAME = 'order_service';
+
+function normalizeRoute(path) {
+  if (path === '/health' || path === '/orders') return path;
+  if (path.startsWith('/orders/')) return '/orders/:id';
+  if (path === '/metrics') return '/metrics';
+  return path;
+}
+
+// Prometheus metrics
+client.collectDefaultMetrics();
+
+const httpRequestsTotal = new client.Counter({
+  name: `${METRIC_SERVICE_NAME}_http_requests_total`,
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code']
+});
+
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestsTotal.inc({
+      method: req.method,
+      route: normalizeRoute(req.path),
+      status_code: res.statusCode
+    });
+  });
+  next();
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
